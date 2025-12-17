@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>uuid generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .back {
+            color: #888;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back:hover {
+            color: #ccc;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        button {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="number"] {
+            width: 80px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #555;
+        }
+        label {
+            font-size: 13px;
+            color: #888;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .uuid-list {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 15px;
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .uuid-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+            gap: 10px;
+        }
+        .uuid-item:last-child {
+            border-bottom: none;
+        }
+        .uuid-value {
+            color: #51cf66;
+            font-size: 13px;
+            flex: 1;
+            word-break: break-all;
+        }
+        .uuid-value.uppercase {
+            text-transform: uppercase;
+        }
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .copy-btn:hover {
+            background: #2a2a2a;
+            color: #ccc;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #888;
+        }
+        .empty-state {
+            color: #555;
+            text-align: center;
+            padding: 40px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">← back</a>
+        <h1>uuid generator</h1>
+
+        <div class="section">
+            <div class="section-title">generate uuids (v4)</div>
+            <div class="controls">
+                <button onclick="generateSingle()">generate 1 uuid</button>
+                <div class="input-group">
+                    <label for="count">bulk generate:</label>
+                    <input type="number" id="count" value="10" min="1" max="1000">
+                    <button onclick="generateBulk()">generate</button>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="uppercase">
+                    <label for="uppercase">uppercase</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">generated uuids (<span id="uuidCount">0</span>)</div>
+            <div class="uuid-list" id="uuidList">
+                <div class="empty-state">no uuids generated yet</div>
+            </div>
+            <div class="controls">
+                <button onclick="copyAll()">copy all</button>
+                <button onclick="clearAll()">clear all</button>
+            </div>
+            <div class="status" id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const uuidList = document.getElementById('uuidList');
+        const uuidCount = document.getElementById('uuidCount');
+        const status = document.getElementById('status');
+        const countInput = document.getElementById('count');
+        const uppercaseCheckbox = document.getElementById('uppercase');
+
+        let uuids = [];
+
+        function generateUUID() {
+            return crypto.randomUUID();
+        }
+
+        function generateSingle() {
+            const uuid = generateUUID();
+            uuids.push(uuid);
+            updateDisplay();
+            status.className = 'status success';
+            status.textContent = 'generated 1 uuid';
+            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        function generateBulk() {
+            const count = parseInt(countInput.value) || 10;
+            if (count < 1 || count > 1000) {
+                status.className = 'status info';
+                status.textContent = 'count must be between 1 and 1000';
+                return;
+            }
+
+            const newUuids = Array.from({ length: count }, () => generateUUID());
+            uuids.push(...newUuids);
+            updateDisplay();
+            status.className = 'status success';
+            status.textContent = `generated ${count} uuid${count > 1 ? 's' : ''}`;
+            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        function updateDisplay() {
+            const isUppercase = uppercaseCheckbox.checked;
+
+            if (uuids.length === 0) {
+                uuidList.innerHTML = '<div class="empty-state">no uuids generated yet</div>';
+                uuidCount.textContent = '0';
+                return;
+            }
+
+            uuidList.innerHTML = uuids.map((uuid, index) => {
+                const displayUuid = isUppercase ? uuid.toUpperCase() : uuid;
+                return `
+                    <div class="uuid-item">
+                        <span class="uuid-value ${isUppercase ? 'uppercase' : ''}">${displayUuid}</span>
+                        <button class="copy-btn" onclick="copyUuid(${index}, this)">copy</button>
+                    </div>
+                `;
+            }).join('');
+
+            uuidCount.textContent = uuids.length;
+        }
+
+        function copyUuid(index, button) {
+            const uuid = uppercaseCheckbox.checked ? uuids[index].toUpperCase() : uuids[index];
+            navigator.clipboard.writeText(uuid).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 1500);
+            });
+        }
+
+        function copyAll() {
+            if (uuids.length === 0) {
+                status.className = 'status info';
+                status.textContent = 'no uuids to copy';
+                return;
+            }
+
+            const isUppercase = uppercaseCheckbox.checked;
+            const allUuids = uuids.map(u => isUppercase ? u.toUpperCase() : u).join('\n');
+
+            navigator.clipboard.writeText(allUuids).then(() => {
+                status.className = 'status success';
+                status.textContent = `copied ${uuids.length} uuid${uuids.length > 1 ? 's' : ''} to clipboard`;
+                setTimeout(() => status.textContent = '', 2000);
+            }).catch(() => {
+                status.className = 'status error';
+                status.textContent = 'failed to copy';
+            });
+        }
+
+        function clearAll() {
+            uuids = [];
+            updateDisplay();
+            status.className = 'status info';
+            status.textContent = 'cleared all uuids';
+            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        // Update display when uppercase checkbox changes
+        uppercaseCheckbox.addEventListener('change', updateDisplay);
+
+        // Generate one UUID on load
+        generateSingle();
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>base64 encoder/decoder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .back {
+            color: #888;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back:hover {
+            color: #ccc;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #555;
+        }
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="checkbox"] {
+            cursor: pointer;
+        }
+        label {
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">← back</a>
+        <h1>base64 encoder/decoder</h1>
+
+        <div class="section">
+            <div class="section-title">text input</div>
+            <textarea id="textInput" placeholder="enter text to encode..."></textarea>
+            <div class="controls">
+                <button onclick="encodeText()">encode to base64</button>
+                <button onclick="clearText()">clear</button>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="urlSafe">
+                    <label for="urlSafe">url-safe encoding</label>
+                </div>
+            </div>
+            <div class="status" id="encodeStatus"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">base64 input</div>
+            <textarea id="base64Input" placeholder="enter base64 to decode..."></textarea>
+            <div class="controls">
+                <button onclick="decodeBase64()">decode from base64</button>
+                <button onclick="clearBase64()">clear</button>
+            </div>
+            <div class="status" id="decodeStatus"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">output</div>
+            <textarea id="output" placeholder="result will appear here..." readonly></textarea>
+            <div class="controls">
+                <button onclick="copyOutput()">copy to clipboard</button>
+                <button onclick="clearOutput()">clear</button>
+            </div>
+            <div class="status" id="outputStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const base64Input = document.getElementById('base64Input');
+        const output = document.getElementById('output');
+        const encodeStatus = document.getElementById('encodeStatus');
+        const decodeStatus = document.getElementById('decodeStatus');
+        const outputStatus = document.getElementById('outputStatus');
+        const urlSafe = document.getElementById('urlSafe');
+
+        function encodeText() {
+            const text = textInput.value.trim();
+            if (!text) {
+                encodeStatus.className = 'status info';
+                encodeStatus.textContent = 'enter text to encode';
+                output.value = '';
+                return;
+            }
+
+            try {
+                let encoded = btoa(unescape(encodeURIComponent(text)));
+
+                if (urlSafe.checked) {
+                    encoded = encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                }
+
+                output.value = encoded;
+                encodeStatus.className = 'status success';
+                encodeStatus.textContent = `encoded ${text.length} characters → ${encoded.length} characters`;
+                decodeStatus.textContent = '';
+            } catch (e) {
+                encodeStatus.className = 'status error';
+                encodeStatus.textContent = `error: ${e.message}`;
+                output.value = '';
+            }
+        }
+
+        function decodeBase64() {
+            let text = base64Input.value.trim();
+            if (!text) {
+                decodeStatus.className = 'status info';
+                decodeStatus.textContent = 'enter base64 to decode';
+                output.value = '';
+                return;
+            }
+
+            try {
+                // Handle URL-safe base64
+                let normalized = text.replace(/-/g, '+').replace(/_/g, '/');
+
+                // Add padding if missing
+                while (normalized.length % 4) {
+                    normalized += '=';
+                }
+
+                const decoded = decodeURIComponent(escape(atob(normalized)));
+                output.value = decoded;
+                decodeStatus.className = 'status success';
+                decodeStatus.textContent = `decoded ${text.length} characters → ${decoded.length} characters`;
+                encodeStatus.textContent = '';
+            } catch (e) {
+                decodeStatus.className = 'status error';
+                decodeStatus.textContent = `error: invalid base64 string`;
+                output.value = '';
+            }
+        }
+
+        function copyOutput() {
+            if (!output.value) {
+                outputStatus.className = 'status info';
+                outputStatus.textContent = 'nothing to copy';
+                return;
+            }
+
+            navigator.clipboard.writeText(output.value).then(() => {
+                outputStatus.className = 'status success';
+                outputStatus.textContent = 'copied to clipboard';
+                setTimeout(() => {
+                    outputStatus.textContent = '';
+                }, 2000);
+            }).catch(() => {
+                outputStatus.className = 'status error';
+                outputStatus.textContent = 'failed to copy';
+            });
+        }
+
+        function clearText() {
+            textInput.value = '';
+            encodeStatus.textContent = '';
+        }
+
+        function clearBase64() {
+            base64Input.value = '';
+            decodeStatus.textContent = '';
+        }
+
+        function clearOutput() {
+            output.value = '';
+            outputStatus.textContent = '';
+        }
+
+        // Real-time encoding on input
+        textInput.addEventListener('input', () => {
+            if (textInput.value) {
+                encodeText();
+            } else {
+                encodeStatus.textContent = '';
+                output.value = '';
+            }
+        });
+
+        // Real-time decoding on input
+        base64Input.addEventListener('input', () => {
+            if (base64Input.value) {
+                decodeBase64();
+            } else {
+                decodeStatus.textContent = '';
+                output.value = '';
+            }
+        });
+
+        // Update encoding when URL-safe checkbox changes
+        urlSafe.addEventListener('change', () => {
+            if (textInput.value) {
+                encodeText();
+            }
+        });
+    </script>
+</body>
+</html>
