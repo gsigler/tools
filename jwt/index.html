@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>jwt decoder</title>
+    <style>
+      body {
+        background: #1a1a1a;
+        color: #ccc;
+        font-family: monospace;
+        padding: 40px;
+        font-size: 14px;
+        margin: 0;
+      }
+      h1, h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin-bottom: 20px;
+        color: #888;
+      }
+      h2 {
+        font-size: 14px;
+        margin-top: 24px;
+        margin-bottom: 8px;
+      }
+      .container {
+        max-width: 900px;
+      }
+      textarea {
+        width: 100%;
+        height: 120px;
+        background: #242424;
+        border: 1px solid #333;
+        color: #ccc;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 12px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+      textarea:focus {
+        outline: 1px solid #444;
+      }
+      input[type="text"] {
+        width: 100%;
+        background: #242424;
+        border: 1px solid #333;
+        color: #ccc;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 8px 12px;
+        box-sizing: border-box;
+      }
+      input[type="text"]:focus {
+        outline: 1px solid #444;
+      }
+      .buttons {
+        margin: 12px 0;
+      }
+      button {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: #aaa;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 8px 16px;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+      button:hover {
+        background: #333;
+      }
+      pre {
+        background: #242424;
+        border: 1px solid #333;
+        padding: 12px;
+        overflow-x: auto;
+        font-size: 13px;
+        margin: 0;
+      }
+      .section {
+        margin-bottom: 16px;
+      }
+      .label {
+        color: #666;
+        margin-bottom: 4px;
+      }
+      .status {
+        margin-top: 16px;
+        padding: 12px;
+        font-size: 13px;
+      }
+      .status.valid {
+        background: #1a2a1a;
+        border: 1px solid #2a4a2a;
+        color: #6a9;
+      }
+      .status.invalid {
+        background: #2a1a1a;
+        border: 1px solid #4a2a2a;
+        color: #c66;
+      }
+      .status.empty {
+        background: #242424;
+        border: 1px solid #333;
+        color: #666;
+      }
+      .status.warning {
+        background: #2a2a1a;
+        border: 1px solid #4a4a2a;
+        color: #aa6;
+      }
+      a {
+        color: #6a9fb5;
+      }
+      .back {
+        margin-bottom: 20px;
+        display: block;
+      }
+      .exp {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #666;
+      }
+      .exp.expired {
+        color: #c66;
+      }
+      .exp.valid {
+        color: #6a9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a class="back" href="../">← back</a>
+      <h1>jwt decoder</h1>
+      <textarea id="input" placeholder="paste jwt here"></textarea>
+      <div class="buttons">
+        <button onclick="clear()">clear</button>
+      </div>
+      <div id="status" class="status empty">paste a jwt</div>
+
+      <div id="output" style="display:none;">
+        <div class="section">
+          <h2>header</h2>
+          <pre id="header"></pre>
+        </div>
+        <div class="section">
+          <h2>payload</h2>
+          <pre id="payload"></pre>
+          <div id="expiry" class="exp"></div>
+        </div>
+        <div class="section">
+          <h2>signature</h2>
+          <pre id="signature"></pre>
+        </div>
+        <div class="section">
+          <h2>verify signature (HS256 only)</h2>
+          <div class="label">secret:</div>
+          <input type="text" id="secret" placeholder="enter secret to verify" />
+          <div class="buttons">
+            <button onclick="verify()">verify</button>
+          </div>
+          <div id="verify-status"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const input = document.getElementById('input');
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      const headerEl = document.getElementById('header');
+      const payloadEl = document.getElementById('payload');
+      const signatureEl = document.getElementById('signature');
+      const expiryEl = document.getElementById('expiry');
+      const secretEl = document.getElementById('secret');
+      const verifyStatus = document.getElementById('verify-status');
+
+      let currentToken = null;
+
+      input.addEventListener('input', decode);
+
+      function base64UrlDecode(str) {
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = str.length % 4;
+        if (pad) str += '='.repeat(4 - pad);
+        return atob(str);
+      }
+
+      function decode() {
+        const val = input.value.trim();
+        verifyStatus.textContent = '';
+
+        if (!val) {
+          status.className = 'status empty';
+          status.textContent = 'paste a jwt';
+          output.style.display = 'none';
+          currentToken = null;
+          return;
+        }
+
+        const parts = val.split('.');
+        if (parts.length !== 3) {
+          status.className = 'status invalid';
+          status.textContent = 'error: jwt must have 3 parts separated by dots';
+          output.style.display = 'none';
+          currentToken = null;
+          return;
+        }
+
+        try {
+          const header = JSON.parse(base64UrlDecode(parts[0]));
+          const payload = JSON.parse(base64UrlDecode(parts[1]));
+          const signature = parts[2];
+
+          currentToken = { header, payload, signature, raw: parts };
+
+          headerEl.textContent = JSON.stringify(header, null, 2);
+          payloadEl.textContent = JSON.stringify(payload, null, 2);
+          signatureEl.textContent = signature;
+
+          // check expiry
+          if (payload.exp) {
+            const expDate = new Date(payload.exp * 1000);
+            const now = new Date();
+            if (expDate < now) {
+              expiryEl.className = 'exp expired';
+              expiryEl.textContent = 'expired: ' + expDate.toISOString();
+            } else {
+              expiryEl.className = 'exp valid';
+              expiryEl.textContent = 'expires: ' + expDate.toISOString();
+            }
+          } else {
+            expiryEl.textContent = '';
+          }
+
+          status.className = 'status valid';
+          status.textContent = 'valid jwt structure';
+          output.style.display = 'block';
+        } catch (e) {
+          status.className = 'status invalid';
+          status.textContent = 'error: ' + e.message;
+          output.style.display = 'none';
+          currentToken = null;
+        }
+      }
+
+      async function verify() {
+        if (!currentToken) return;
+
+        const secret = secretEl.value;
+        if (!secret) {
+          verifyStatus.className = 'status invalid';
+          verifyStatus.textContent = 'enter a secret';
+          return;
+        }
+
+        if (currentToken.header.alg !== 'HS256') {
+          verifyStatus.className = 'status warning';
+          verifyStatus.textContent = 'only HS256 verification supported, token uses ' + currentToken.header.alg;
+          return;
+        }
+
+        try {
+          const enc = new TextEncoder();
+          const key = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(secret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+          );
+
+          const data = currentToken.raw[0] + '.' + currentToken.raw[1];
+          const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+
+          const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+          if (sigB64 === currentToken.raw[2]) {
+            verifyStatus.className = 'status valid';
+            verifyStatus.textContent = 'signature valid';
+          } else {
+            verifyStatus.className = 'status invalid';
+            verifyStatus.textContent = 'signature invalid';
+          }
+        } catch (e) {
+          verifyStatus.className = 'status invalid';
+          verifyStatus.textContent = 'verification error: ' + e.message;
+        }
+      }
+
+      function clear() {
+        input.value = '';
+        secretEl.value = '';
+        decode();
+      }
+    </script>
+  </body>
+</html>
