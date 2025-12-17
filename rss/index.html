@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rss reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a1a;
+            color: #888;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #666;
+            font-size: 16px;
+            font-weight: normal;
+            margin-bottom: 30px;
+            text-transform: lowercase;
+        }
+        .feed-section {
+            margin-bottom: 40px;
+        }
+        .feed-title {
+            color: #555;
+            font-size: 12px;
+            text-transform: lowercase;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        .article {
+            margin-bottom: 12px;
+            padding-left: 10px;
+            border-left: 2px solid #333;
+        }
+        .article:hover {
+            border-left-color: #555;
+        }
+        .article a {
+            color: #999;
+            text-decoration: none;
+            text-transform: lowercase;
+        }
+        .article a:hover {
+            color: #bbb;
+        }
+        .article-date {
+            color: #444;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+        .loading {
+            color: #444;
+        }
+        .error {
+            color: #744;
+        }
+    </style>
+</head>
+<body>
+    <h1>rss reader</h1>
+
+    <div class="feed-section">
+        <div class="feed-title">the verge</div>
+        <div id="verge" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <div class="feed-section">
+        <div class="feed-title">mac rumors</div>
+        <div id="macrumors" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <div class="feed-section">
+        <div class="feed-title">ars technica</div>
+        <div id="arstechnica" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <div class="feed-section">
+        <div class="feed-title">ap news</div>
+        <div id="apnews" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <div class="feed-section">
+        <div class="feed-title">ksl</div>
+        <div id="ksl" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <div class="feed-section">
+        <div class="feed-title">deseret news</div>
+        <div id="deseret" class="feed-content"><span class="loading">loading...</span></div>
+    </div>
+
+    <script>
+        const feeds = [
+            { id: 'verge', url: 'https://www.theverge.com/rss/index.xml' },
+            { id: 'macrumors', url: 'https://feeds.macrumors.com/MacRumors-All' },
+            { id: 'arstechnica', url: 'https://feeds.arstechnica.com/arstechnica/index' },
+            { id: 'apnews', url: 'https://news.google.com/rss/search?q=when:24h+allinurl:apnews.com' },
+            { id: 'ksl', url: 'https://news.google.com/rss/search?q=when:24h+allinurl:ksl.com' },
+            { id: 'deseret', url: 'https://www.deseret.com/arc/outboundfeeds/rss/' }
+        ];
+
+        async function fetchFeed(feed) {
+            const container = document.getElementById(feed.id);
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=10`;
+
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status !== 'ok') {
+                    throw new Error('feed unavailable');
+                }
+
+                const items = data.items.slice(0, 10);
+                container.innerHTML = items.map(item => {
+                    const date = new Date(item.pubDate);
+                    const dateStr = date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    }).toLowerCase();
+                    return `
+                        <div class="article">
+                            <a href="${item.link}" target="_blank">${item.title.toLowerCase()}</a>
+                            <span class="article-date">${dateStr}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<span class="error">failed to load feed</span>`;
+            }
+        }
+
+        feeds.forEach(fetchFeed);
+    </script>
+</body>
+</html>
