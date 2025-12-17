@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hash generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .back {
+            color: #888;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back:hover {
+            color: #ccc;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #555;
+        }
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        .hash-result {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .hash-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .hash-value {
+            color: #51cf66;
+            word-break: break-all;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .hash-text {
+            flex: 1;
+        }
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .copy-btn:hover {
+            background: #2a2a2a;
+            color: #ccc;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+        .info {
+            color: #888;
+        }
+        .file-input {
+            display: none;
+        }
+        .file-label {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .file-label:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        .file-info {
+            color: #888;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">← back</a>
+        <h1>hash generator</h1>
+
+        <div class="section">
+            <div class="section-title">text input</div>
+            <textarea id="textInput" placeholder="enter text to hash..."></textarea>
+            <div class="controls">
+                <button onclick="generateHashes()">generate hashes</button>
+                <button onclick="clearInput()">clear</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">or hash a file</div>
+            <input type="file" id="fileInput" class="file-input" onchange="hashFile()">
+            <label for="fileInput" class="file-label">choose file</label>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">hashes</div>
+            <div id="hashResults"></div>
+            <div class="status" id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const fileInput = document.getElementById('fileInput');
+        const hashResults = document.getElementById('hashResults');
+        const status = document.getElementById('status');
+        const fileInfo = document.getElementById('fileInfo');
+
+        async function generateHash(algorithm, data) {
+            const encoder = new TextEncoder();
+            const dataBuffer = encoder.encode(data);
+            const hashBuffer = await crypto.subtle.digest(algorithm, dataBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function generateHashes() {
+            const text = textInput.value;
+            if (!text) {
+                status.className = 'status info';
+                status.textContent = 'enter text to generate hashes';
+                hashResults.innerHTML = '';
+                return;
+            }
+
+            try {
+                status.className = 'status info';
+                status.textContent = 'generating hashes...';
+
+                const algorithms = [
+                    { name: 'SHA-1', algo: 'SHA-1' },
+                    { name: 'SHA-256', algo: 'SHA-256' },
+                    { name: 'SHA-384', algo: 'SHA-384' },
+                    { name: 'SHA-512', algo: 'SHA-512' }
+                ];
+
+                const hashes = await Promise.all(
+                    algorithms.map(async ({ name, algo }) => ({
+                        name,
+                        hash: await generateHash(algo, text)
+                    }))
+                );
+
+                displayHashes(hashes);
+                status.textContent = '';
+                fileInfo.textContent = '';
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `error: ${e.message}`;
+            }
+        }
+
+        async function hashFile() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            try {
+                fileInfo.textContent = `file: ${file.name} (${formatFileSize(file.size)})`;
+                status.className = 'status info';
+                status.textContent = 'hashing file...';
+
+                const arrayBuffer = await file.arrayBuffer();
+
+                const algorithms = [
+                    { name: 'SHA-1', algo: 'SHA-1' },
+                    { name: 'SHA-256', algo: 'SHA-256' },
+                    { name: 'SHA-384', algo: 'SHA-384' },
+                    { name: 'SHA-512', algo: 'SHA-512' }
+                ];
+
+                const hashes = await Promise.all(
+                    algorithms.map(async ({ name, algo }) => {
+                        const hashBuffer = await crypto.subtle.digest(algo, arrayBuffer);
+                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                        const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                        return { name, hash };
+                    })
+                );
+
+                displayHashes(hashes);
+                status.textContent = '';
+                textInput.value = '';
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `error: ${e.message}`;
+            }
+        }
+
+        function displayHashes(hashes) {
+            hashResults.innerHTML = hashes.map(({ name, hash }) => `
+                <div class="hash-result">
+                    <div class="hash-label">${name}</div>
+                    <div class="hash-value">
+                        <span class="hash-text">${hash}</span>
+                        <button class="copy-btn" onclick="copyHash('${hash}', this)">copy</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function copyHash(hash, button) {
+            navigator.clipboard.writeText(hash).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 1500);
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
+
+        function clearInput() {
+            textInput.value = '';
+            hashResults.innerHTML = '';
+            status.textContent = '';
+        }
+
+        // Real-time hash generation
+        textInput.addEventListener('input', () => {
+            if (textInput.value) {
+                generateHashes();
+            } else {
+                hashResults.innerHTML = '';
+                status.textContent = '';
+            }
+        });
+    </script>
+</body>
+</html>

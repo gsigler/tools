@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>color converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .back {
+            color: #888;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back:hover {
+            color: #ccc;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        .color-preview {
+            width: 100%;
+            height: 200px;
+            background: #fff;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            transition: background-color 0.2s;
+        }
+        .picker-container {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        input[type="color"] {
+            width: 80px;
+            height: 40px;
+            border: 1px solid #333;
+            background: #0a0a0a;
+            cursor: pointer;
+        }
+        .picker-label {
+            color: #888;
+            font-size: 13px;
+        }
+        .format-group {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .format-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .format-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #51cf66;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #555;
+        }
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: 'Courier New', monospace;
+        }
+        .copy-btn:hover {
+            background: #2a2a2a;
+            color: #ccc;
+        }
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        .slider-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #51cf66;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #51cf66;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">← back</a>
+        <h1>color converter</h1>
+
+        <div class="section">
+            <div class="section-title">color preview</div>
+            <div class="color-preview" id="colorPreview"></div>
+
+            <div class="picker-container">
+                <input type="color" id="colorPicker" value="#51cf66">
+                <span class="picker-label">pick a color</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">rgb sliders</div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>red</span>
+                    <span id="rValue">81</span>
+                </div>
+                <input type="range" id="rSlider" min="0" max="255" value="81">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>green</span>
+                    <span id="gValue">207</span>
+                </div>
+                <input type="range" id="gSlider" min="0" max="255" value="207">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>blue</span>
+                    <span id="bValue">102</span>
+                </div>
+                <input type="range" id="bSlider" min="0" max="255" value="102">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">color formats</div>
+
+            <div class="format-group">
+                <div class="format-label">hex</div>
+                <div class="format-value">
+                    <input type="text" id="hexInput" value="#51cf66">
+                    <button class="copy-btn" onclick="copyFormat('hex')">copy</button>
+                </div>
+            </div>
+
+            <div class="format-group">
+                <div class="format-label">rgb</div>
+                <div class="format-value">
+                    <input type="text" id="rgbInput" value="rgb(81, 207, 102)" readonly>
+                    <button class="copy-btn" onclick="copyFormat('rgb')">copy</button>
+                </div>
+            </div>
+
+            <div class="format-group">
+                <div class="format-label">rgba</div>
+                <div class="format-value">
+                    <input type="text" id="rgbaInput" value="rgba(81, 207, 102, 1)" readonly>
+                    <button class="copy-btn" onclick="copyFormat('rgba')">copy</button>
+                </div>
+            </div>
+
+            <div class="format-group">
+                <div class="format-label">hsl</div>
+                <div class="format-value">
+                    <input type="text" id="hslInput" value="hsl(130, 58%, 56%)" readonly>
+                    <button class="copy-btn" onclick="copyFormat('hsl')">copy</button>
+                </div>
+            </div>
+
+            <div class="format-group">
+                <div class="format-label">hsla</div>
+                <div class="format-value">
+                    <input type="text" id="hslaInput" value="hsla(130, 58%, 56%, 1)" readonly>
+                    <button class="copy-btn" onclick="copyFormat('hsla')">copy</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="controls">
+                <button onclick="randomColor()">random color</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const colorPreview = document.getElementById('colorPreview');
+        const colorPicker = document.getElementById('colorPicker');
+        const hexInput = document.getElementById('hexInput');
+        const rgbInput = document.getElementById('rgbInput');
+        const rgbaInput = document.getElementById('rgbaInput');
+        const hslInput = document.getElementById('hslInput');
+        const hslaInput = document.getElementById('hslaInput');
+
+        const rSlider = document.getElementById('rSlider');
+        const gSlider = document.getElementById('gSlider');
+        const bSlider = document.getElementById('bSlider');
+        const rValue = document.getElementById('rValue');
+        const gValue = document.getElementById('gValue');
+        const bValue = document.getElementById('bValue');
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+
+            return {
+                h: Math.round(h * 360),
+                s: Math.round(s * 100),
+                l: Math.round(l * 100)
+            };
+        }
+
+        function updateColor(r, g, b) {
+            const hex = rgbToHex(r, g, b);
+            const hsl = rgbToHsl(r, g, b);
+
+            colorPreview.style.backgroundColor = hex;
+            colorPicker.value = hex;
+            hexInput.value = hex;
+            rgbInput.value = `rgb(${r}, ${g}, ${b})`;
+            rgbaInput.value = `rgba(${r}, ${g}, ${b}, 1)`;
+            hslInput.value = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+            hslaInput.value = `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 1)`;
+
+            rSlider.value = r;
+            gSlider.value = g;
+            bSlider.value = b;
+            rValue.textContent = r;
+            gValue.textContent = g;
+            bValue.textContent = b;
+        }
+
+        function updateFromSliders() {
+            const r = parseInt(rSlider.value);
+            const g = parseInt(gSlider.value);
+            const b = parseInt(bSlider.value);
+            updateColor(r, g, b);
+        }
+
+        function updateFromHex() {
+            const hex = hexInput.value.trim();
+            const rgb = hexToRgb(hex);
+            if (rgb) {
+                updateColor(rgb.r, rgb.g, rgb.b);
+            }
+        }
+
+        function randomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            updateColor(r, g, b);
+        }
+
+        function copyFormat(format) {
+            let value;
+            switch(format) {
+                case 'hex': value = hexInput.value; break;
+                case 'rgb': value = rgbInput.value; break;
+                case 'rgba': value = rgbaInput.value; break;
+                case 'hsl': value = hslInput.value; break;
+                case 'hsla': value = hslaInput.value; break;
+            }
+
+            navigator.clipboard.writeText(value).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 1500);
+            });
+        }
+
+        // Event listeners
+        colorPicker.addEventListener('input', (e) => {
+            const rgb = hexToRgb(e.target.value);
+            if (rgb) {
+                updateColor(rgb.r, rgb.g, rgb.b);
+            }
+        });
+
+        hexInput.addEventListener('input', updateFromHex);
+        hexInput.addEventListener('change', updateFromHex);
+
+        rSlider.addEventListener('input', updateFromSliders);
+        gSlider.addEventListener('input', updateFromSliders);
+        bSlider.addEventListener('input', updateFromSliders);
+
+        // Initialize with default color
+        updateColor(81, 207, 102);
+    </script>
+</body>
+</html>

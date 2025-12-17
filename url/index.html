@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>url encoder/decoder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .back {
+            color: #888;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back:hover {
+            color: #ccc;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #888;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #555;
+        }
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #888;
+        }
+        .params-display {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 100px;
+        }
+        .param-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+        }
+        .param-item:last-child {
+            border-bottom: none;
+        }
+        .param-key {
+            color: #888;
+            font-size: 12px;
+        }
+        .param-value {
+            color: #51cf66;
+            font-size: 13px;
+            word-break: break-all;
+        }
+        .empty-params {
+            color: #555;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back">← back</a>
+        <h1>url encoder/decoder</h1>
+
+        <div class="section">
+            <div class="section-title">url input</div>
+            <textarea id="urlInput" placeholder="enter url or text to encode/decode..."></textarea>
+            <div class="controls">
+                <button onclick="encodeUrl()">encode url</button>
+                <button onclick="encodeComponent()">encode component</button>
+                <button onclick="decodeUrl()">decode url</button>
+                <button onclick="clearInput()">clear</button>
+            </div>
+            <div class="status" id="status"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">result</div>
+            <textarea id="output" placeholder="result will appear here..." readonly></textarea>
+            <div class="controls">
+                <button onclick="copyOutput()">copy to clipboard</button>
+            </div>
+            <div class="status" id="outputStatus"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">query parameters</div>
+            <div class="params-display" id="paramsDisplay">
+                <div class="empty-params">enter a url with query parameters to parse them</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        const outputStatus = document.getElementById('outputStatus');
+        const paramsDisplay = document.getElementById('paramsDisplay');
+
+        function encodeUrl() {
+            const text = urlInput.value.trim();
+            if (!text) {
+                status.className = 'status info';
+                status.textContent = 'enter text to encode';
+                output.value = '';
+                return;
+            }
+
+            try {
+                const encoded = encodeURI(text);
+                output.value = encoded;
+                status.className = 'status success';
+                status.textContent = `encoded url (preserves special characters like :, /, ?, &)`;
+                parseQueryParams('');
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `error: ${e.message}`;
+                output.value = '';
+            }
+        }
+
+        function encodeComponent() {
+            const text = urlInput.value.trim();
+            if (!text) {
+                status.className = 'status info';
+                status.textContent = 'enter text to encode';
+                output.value = '';
+                return;
+            }
+
+            try {
+                const encoded = encodeURIComponent(text);
+                output.value = encoded;
+                status.className = 'status success';
+                status.textContent = `encoded component (encodes all special characters)`;
+                parseQueryParams('');
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `error: ${e.message}`;
+                output.value = '';
+            }
+        }
+
+        function decodeUrl() {
+            const text = urlInput.value.trim();
+            if (!text) {
+                status.className = 'status info';
+                status.textContent = 'enter text to decode';
+                output.value = '';
+                return;
+            }
+
+            try {
+                let decoded;
+                // Try decodeURIComponent first (handles more cases)
+                try {
+                    decoded = decodeURIComponent(text);
+                } catch {
+                    // Fall back to decodeURI if decodeURIComponent fails
+                    decoded = decodeURI(text);
+                }
+
+                output.value = decoded;
+                status.className = 'status success';
+                status.textContent = `decoded url`;
+
+                // Try to parse query parameters
+                parseQueryParams(text);
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `error: ${e.message}`;
+                output.value = '';
+            }
+        }
+
+        function parseQueryParams(url) {
+            if (!url) {
+                paramsDisplay.innerHTML = '<div class="empty-params">enter a url with query parameters to parse them</div>';
+                return;
+            }
+
+            try {
+                // Extract query string
+                const queryStart = url.indexOf('?');
+                if (queryStart === -1) {
+                    paramsDisplay.innerHTML = '<div class="empty-params">no query parameters found</div>';
+                    return;
+                }
+
+                const queryString = url.substring(queryStart + 1);
+                const hashIndex = queryString.indexOf('#');
+                const cleanQuery = hashIndex !== -1 ? queryString.substring(0, hashIndex) : queryString;
+
+                // Parse parameters
+                const params = new URLSearchParams(cleanQuery);
+                const entries = Array.from(params.entries());
+
+                if (entries.length === 0) {
+                    paramsDisplay.innerHTML = '<div class="empty-params">no query parameters found</div>';
+                    return;
+                }
+
+                paramsDisplay.innerHTML = entries.map(([key, value]) => `
+                    <div class="param-item">
+                        <div class="param-key">${escapeHtml(key)}</div>
+                        <div class="param-value">${escapeHtml(value)}</div>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                paramsDisplay.innerHTML = '<div class="empty-params">could not parse query parameters</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function copyOutput() {
+            if (!output.value) {
+                outputStatus.className = 'status info';
+                outputStatus.textContent = 'nothing to copy';
+                return;
+            }
+
+            navigator.clipboard.writeText(output.value).then(() => {
+                outputStatus.className = 'status success';
+                outputStatus.textContent = 'copied to clipboard';
+                setTimeout(() => {
+                    outputStatus.textContent = '';
+                }, 2000);
+            }).catch(() => {
+                outputStatus.className = 'status error';
+                outputStatus.textContent = 'failed to copy';
+            });
+        }
+
+        function clearInput() {
+            urlInput.value = '';
+            output.value = '';
+            status.textContent = '';
+            outputStatus.textContent = '';
+            paramsDisplay.innerHTML = '<div class="empty-params">enter a url with query parameters to parse them</div>';
+        }
+
+        // Real-time decoding on input
+        urlInput.addEventListener('input', () => {
+            if (urlInput.value) {
+                decodeUrl();
+            } else {
+                output.value = '';
+                status.textContent = '';
+                paramsDisplay.innerHTML = '<div class="empty-params">enter a url with query parameters to parse them</div>';
+            }
+        });
+    </script>
+</body>
+</html>
