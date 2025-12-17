@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>date converter</title>
+    <style>
+      body {
+        background: #1a1a1a;
+        color: #ccc;
+        font-family: monospace;
+        padding: 40px;
+        font-size: 14px;
+        margin: 0;
+      }
+      h1, h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin-bottom: 20px;
+        color: #888;
+      }
+      h2 {
+        font-size: 14px;
+        margin-top: 0;
+        margin-bottom: 12px;
+      }
+      .container {
+        max-width: 1000px;
+      }
+      a {
+        color: #6a9fb5;
+      }
+      .back {
+        margin-bottom: 20px;
+        display: block;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      @media (max-width: 700px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      .section {
+        background: #242424;
+        border: 1px solid #333;
+        padding: 16px;
+      }
+      input {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        color: #ccc;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: 1px solid #444;
+      }
+      .input-full {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+      .input-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .input-row input {
+        flex: 1;
+      }
+      .input-row .small {
+        width: 60px;
+        flex: none;
+      }
+      .hint {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 12px;
+      }
+      .label {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 4px;
+      }
+      .results {
+        border-top: 1px solid #333;
+        padding-top: 12px;
+        margin-top: 12px;
+      }
+      .result-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .result-row:last-child {
+        border-bottom: none;
+      }
+      .result-label {
+        color: #666;
+      }
+      .result-value {
+        color: #ccc;
+        text-align: right;
+        word-break: break-all;
+      }
+      button {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: #aaa;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 8px 16px;
+        cursor: pointer;
+        margin-bottom: 16px;
+      }
+      button:hover {
+        background: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a class="back" href="../">← back</a>
+      <h1>date converter</h1>
+      <button onclick="loadNow()">now</button>
+
+      <div class="grid">
+        <div class="section">
+          <h2>unix timestamp</h2>
+          <input type="text" id="ts-input" class="input-full" placeholder="1765994089 or 1765994089510" />
+          <div class="hint">seconds or milliseconds</div>
+          <div class="results" id="ts-results"></div>
+        </div>
+
+        <div class="section">
+          <h2>iso 8601</h2>
+          <input type="text" id="iso-input" class="input-full" placeholder="2025-12-17T17:54:49.510Z" />
+          <div class="hint">2025-12-17T17:54:49Z or 2025-12-17T17:54:49.510+00:00</div>
+          <div class="results" id="iso-results"></div>
+        </div>
+
+        <div class="section">
+          <h2>utc</h2>
+          <div class="input-row">
+            <div style="flex:1">
+              <div class="label">date</div>
+              <input type="date" id="utc-date" style="width:100%" />
+            </div>
+            <div style="flex:1">
+              <div class="label">time</div>
+              <input type="time" id="utc-time" style="width:100%" />
+            </div>
+            <div>
+              <div class="label">sec</div>
+              <input type="number" id="utc-sec" class="small" min="0" max="59" value="0" />
+            </div>
+          </div>
+          <div class="results" id="utc-results"></div>
+        </div>
+
+        <div class="section">
+          <h2>local time</h2>
+          <div class="input-row">
+            <div style="flex:1">
+              <div class="label">date</div>
+              <input type="date" id="local-date" style="width:100%" />
+            </div>
+            <div style="flex:1">
+              <div class="label">time</div>
+              <input type="time" id="local-time" style="width:100%" />
+            </div>
+            <div>
+              <div class="label">sec</div>
+              <input type="number" id="local-sec" class="small" min="0" max="59" value="0" />
+            </div>
+          </div>
+          <div class="results" id="local-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tsInput = document.getElementById('ts-input');
+      const isoInput = document.getElementById('iso-input');
+      const utcDate = document.getElementById('utc-date');
+      const utcTime = document.getElementById('utc-time');
+      const utcSec = document.getElementById('utc-sec');
+      const localDate = document.getElementById('local-date');
+      const localTime = document.getElementById('local-time');
+      const localSec = document.getElementById('local-sec');
+
+      function formatResults(date) {
+        if (!date || isNaN(date.getTime())) return '';
+        const ts = Math.floor(date.getTime() / 1000);
+        const tsMs = date.getTime();
+        const iso = date.toISOString();
+        const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'medium' });
+        const localStr = date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+
+        return `
+          <div class="result-row"><span class="result-label">timestamp</span><span class="result-value">${ts}</span></div>
+          <div class="result-row"><span class="result-label">timestamp (ms)</span><span class="result-value">${tsMs}</span></div>
+          <div class="result-row"><span class="result-label">iso 8601</span><span class="result-value">${iso}</span></div>
+          <div class="result-row"><span class="result-label">utc</span><span class="result-value">${utcStr}</span></div>
+          <div class="result-row"><span class="result-label">local</span><span class="result-value">${localStr}</span></div>
+        `;
+      }
+
+      function parseTimestamp() {
+        const val = tsInput.value.trim();
+        if (!val) {
+          document.getElementById('ts-results').innerHTML = '';
+          return;
+        }
+        const num = parseInt(val, 10);
+        if (isNaN(num)) {
+          document.getElementById('ts-results').innerHTML = '<div class="result-row"><span class="result-label">error</span><span class="result-value">invalid number</span></div>';
+          return;
+        }
+        // if > 10 digits, assume milliseconds
+        const ms = val.length > 10 ? num : num * 1000;
+        const date = new Date(ms);
+        document.getElementById('ts-results').innerHTML = formatResults(date);
+      }
+
+      function parseIso() {
+        const val = isoInput.value.trim();
+        if (!val) {
+          document.getElementById('iso-results').innerHTML = '';
+          return;
+        }
+        const date = new Date(val);
+        if (isNaN(date.getTime())) {
+          document.getElementById('iso-results').innerHTML = '<div class="result-row"><span class="result-label">error</span><span class="result-value">invalid date</span></div>';
+          return;
+        }
+        document.getElementById('iso-results').innerHTML = formatResults(date);
+      }
+
+      function parseUtc() {
+        const d = utcDate.value;
+        const t = utcTime.value;
+        if (!d || !t) {
+          document.getElementById('utc-results').innerHTML = '';
+          return;
+        }
+        const sec = parseInt(utcSec.value, 10) || 0;
+        const date = new Date(`${d}T${t}:${sec.toString().padStart(2, '0')}Z`);
+        document.getElementById('utc-results').innerHTML = formatResults(date);
+      }
+
+      function parseLocal() {
+        const d = localDate.value;
+        const t = localTime.value;
+        if (!d || !t) {
+          document.getElementById('local-results').innerHTML = '';
+          return;
+        }
+        const sec = parseInt(localSec.value, 10) || 0;
+        const [hours, mins] = t.split(':');
+        const date = new Date(d);
+        date.setHours(parseInt(hours, 10), parseInt(mins, 10), sec, 0);
+        document.getElementById('local-results').innerHTML = formatResults(date);
+      }
+
+      function loadNow() {
+        const now = new Date();
+
+        tsInput.value = Math.floor(now.getTime() / 1000);
+        parseTimestamp();
+
+        isoInput.value = now.toISOString();
+        parseIso();
+
+        const utcY = now.getUTCFullYear();
+        const utcM = (now.getUTCMonth() + 1).toString().padStart(2, '0');
+        const utcD = now.getUTCDate().toString().padStart(2, '0');
+        const utcH = now.getUTCHours().toString().padStart(2, '0');
+        const utcMin = now.getUTCMinutes().toString().padStart(2, '0');
+        utcDate.value = `${utcY}-${utcM}-${utcD}`;
+        utcTime.value = `${utcH}:${utcMin}`;
+        utcSec.value = now.getUTCSeconds();
+        parseUtc();
+
+        const locY = now.getFullYear();
+        const locM = (now.getMonth() + 1).toString().padStart(2, '0');
+        const locD = now.getDate().toString().padStart(2, '0');
+        const locH = now.getHours().toString().padStart(2, '0');
+        const locMin = now.getMinutes().toString().padStart(2, '0');
+        localDate.value = `${locY}-${locM}-${locD}`;
+        localTime.value = `${locH}:${locMin}`;
+        localSec.value = now.getSeconds();
+        parseLocal();
+      }
+
+      tsInput.addEventListener('input', parseTimestamp);
+      isoInput.addEventListener('input', parseIso);
+      utcDate.addEventListener('input', parseUtc);
+      utcTime.addEventListener('input', parseUtc);
+      utcSec.addEventListener('input', parseUtc);
+      localDate.addEventListener('input', parseLocal);
+      localTime.addEventListener('input', parseLocal);
+      localSec.addEventListener('input', parseLocal);
+    </script>
+  </body>
+</html>
