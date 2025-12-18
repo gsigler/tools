@@ -383,6 +383,84 @@
             return { html: result.join(''), diffCount };
         }
 
+        function getCharDiffForLine(str1, str2) {
+            // Use dynamic programming to find longest common subsequence
+            const m = str1.length;
+            const n = str2.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+            // Build LCS table
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+
+            // Backtrack to find the diff
+            let i = m, j = n;
+            const diff1 = [], diff2 = [];
+
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && str1[i - 1] === str2[j - 1]) {
+                    diff1.unshift({ char: str1[i - 1], type: 'same' });
+                    diff2.unshift({ char: str2[j - 1], type: 'same' });
+                    i--;
+                    j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    diff1.unshift({ char: '', type: 'none' });
+                    diff2.unshift({ char: str2[j - 1], type: 'added' });
+                    j--;
+                } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+                    diff1.unshift({ char: str1[i - 1], type: 'removed' });
+                    diff2.unshift({ char: '', type: 'none' });
+                    i--;
+                }
+            }
+
+            // Convert to HTML
+            const toHtml = (diffs, isLeft) => {
+                let html = '';
+                let i = 0;
+                while (i < diffs.length) {
+                    const d = diffs[i];
+                    if (d.type === 'same') {
+                        html += `<span class="unchanged">${escapeHtml(d.char)}</span>`;
+                        i++;
+                    } else if (d.type === 'removed' && isLeft) {
+                        // Group consecutive removed chars
+                        let removed = '';
+                        while (i < diffs.length && diffs[i].type === 'removed') {
+                            removed += diffs[i].char;
+                            i++;
+                        }
+                        html += `<span class="removed">${escapeHtml(removed)}</span>`;
+                    } else if (d.type === 'added' && !isLeft) {
+                        // Group consecutive added chars
+                        let added = '';
+                        while (i < diffs.length && diffs[i].type === 'added') {
+                            added += diffs[i].char;
+                            i++;
+                        }
+                        html += `<span class="added">${escapeHtml(added)}</span>`;
+                    } else if (d.type === 'none') {
+                        i++;
+                    } else {
+                        i++;
+                    }
+                }
+                return html;
+            };
+
+            return {
+                left: toHtml(diff1, true),
+                right: toHtml(diff2, false)
+            };
+        }
+
         function compareSideBySide(s1, s2) {
             const lines1 = s1.split('\n');
             const lines2 = s2.split('\n');
@@ -407,8 +485,10 @@
                         left.push(`<div class="diff-line"></div>`);
                         right.push(`<div class="diff-line added">${escapeHtml(line2)}</div>`);
                     } else {
-                        left.push(`<div class="diff-line changed">${escapeHtml(line1)}</div>`);
-                        right.push(`<div class="diff-line changed">${escapeHtml(line2)}</div>`);
+                        // Both lines exist but differ - show character-level diff
+                        const charDiff = getCharDiffForLine(line1, line2);
+                        left.push(`<div class="diff-line">${charDiff.left}</div>`);
+                        right.push(`<div class="diff-line">${charDiff.right}</div>`);
                     }
                 }
             }
