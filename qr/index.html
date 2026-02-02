@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>qr generator</title>
+    <title>qr code</title>
     <style>
       body {
         background: #1a1a1a;
@@ -20,25 +20,41 @@
         color: #888;
       }
       .container {
-        max-width: 600px;
+        max-width: 700px;
       }
+      .input-group {
+        margin-bottom: 12px;
+      }
+      .input-group label {
+        display: block;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+      input[type="text"],
       textarea {
         width: 100%;
-        height: 100px;
         background: #242424;
         border: 1px solid #333;
         color: #ccc;
         font-family: monospace;
         font-size: 13px;
         padding: 12px;
-        resize: vertical;
         box-sizing: border-box;
       }
+      textarea {
+        height: 80px;
+        resize: vertical;
+      }
+      input[type="text"] {
+        height: 40px;
+      }
+      input:focus,
       textarea:focus {
         outline: 1px solid #444;
       }
       .buttons {
-        margin: 12px 0;
+        margin: 16px 0;
       }
       button {
         background: #2a2a2a;
@@ -64,37 +80,12 @@
         margin-bottom: 20px;
         display: block;
       }
-      .qr-container {
-        margin-top: 20px;
-        display: none;
-      }
-      .qr-container.visible {
-        display: block;
-      }
-      #qr-output {
-        background: #fff;
-        display: inline-block;
-        padding: 8px;
-      }
-      #qr-output canvas, #qr-output img {
-        display: block;
-      }
-      .status {
-        margin-top: 12px;
-        font-size: 12px;
-        color: #666;
-      }
-      .status.success {
-        color: #6a9;
-      }
-      .status.error {
-        color: #c66;
-      }
       .options {
         margin: 12px 0;
         display: flex;
-        gap: 16px;
+        gap: 20px;
         align-items: center;
+        flex-wrap: wrap;
       }
       .options label {
         color: #666;
@@ -111,52 +102,108 @@
       .options select:focus {
         outline: 1px solid #444;
       }
+      .qr-container {
+        margin-top: 20px;
+        display: none;
+      }
+      .qr-container.visible {
+        display: block;
+      }
+      .preview-wrapper {
+        background: #fff;
+        display: inline-block;
+        padding: 0;
+      }
+      .preview-wrapper canvas {
+        display: block;
+      }
+      .size-info {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #666;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #666;
+      }
+      .status.success {
+        color: #6a9;
+      }
+      .status.error {
+        color: #c66;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <a class="back" href="../">← back</a>
-      <h1>qr generator</h1>
-      <textarea id="input" placeholder="enter text or url"></textarea>
+      <h1>qr code</h1>
+
+      <div class="input-group">
+        <label>link or text</label>
+        <textarea id="input" placeholder="enter url or text"></textarea>
+      </div>
+
+      <div class="input-group">
+        <label>title (optional)</label>
+        <input type="text" id="title" placeholder="label for the qr code" />
+      </div>
+
       <div class="options">
         <label>size: <select id="size">
-          <option value="128">128px</option>
-          <option value="256" selected>256px</option>
-          <option value="512">512px</option>
+          <option value="2">2×2 inches</option>
+          <option value="3" selected>3×3 inches</option>
+          <option value="4">4×4 inches</option>
         </select></label>
       </div>
+
       <div class="buttons">
         <button id="copy-btn" onclick="copyQR()" disabled>copy</button>
         <button id="download-btn" onclick="downloadQR()" disabled>download</button>
         <button onclick="clearAll()">clear</button>
       </div>
+
       <div id="qr-container" class="qr-container">
-        <div id="qr-output"></div>
+        <div class="preview-wrapper">
+          <canvas id="qr-canvas"></canvas>
+        </div>
+        <div class="size-info" id="size-info"></div>
       </div>
+
       <div id="status" class="status"></div>
     </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous"></script>
     <script>
+      const DPI = 300;
+      const PREVIEW_SCALE = 0.25;
+
       const input = document.getElementById('input');
-      const output = document.getElementById('qr-output');
-      const container = document.getElementById('qr-container');
-      const status = document.getElementById('status');
+      const titleInput = document.getElementById('title');
       const sizeSelect = document.getElementById('size');
+      const container = document.getElementById('qr-container');
+      const canvas = document.getElementById('qr-canvas');
+      const sizeInfo = document.getElementById('size-info');
+      const status = document.getElementById('status');
       const copyBtn = document.getElementById('copy-btn');
       const downloadBtn = document.getElementById('download-btn');
 
-      let qr = null;
       let debounceTimer;
+      let fullCanvas = null;
 
-      input.addEventListener('input', () => {
+      input.addEventListener('input', debounceGenerate);
+      titleInput.addEventListener('input', debounceGenerate);
+      sizeSelect.addEventListener('change', debounceGenerate);
+
+      function debounceGenerate() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(generate, 150);
-      });
-
-      sizeSelect.addEventListener('change', generate);
+      }
 
       function generate() {
         const text = input.value.trim();
+        const title = titleInput.value.trim();
         status.textContent = '';
         status.className = 'status';
 
@@ -164,59 +211,95 @@
           container.classList.remove('visible');
           copyBtn.disabled = true;
           downloadBtn.disabled = true;
-          if (qr) {
-            qr.clear();
-            qr = null;
-            output.innerHTML = '';
-          }
+          fullCanvas = null;
           return;
         }
 
-        const size = parseInt(sizeSelect.value);
+        const inches = parseInt(sizeSelect.value);
+        const fullSize = inches * DPI;
+        const previewSize = Math.round(fullSize * PREVIEW_SCALE);
 
         try {
-          if (qr) {
-            qr.clear();
-            output.innerHTML = '';
-          }
-          qr = new QRCode(output, {
+          const tempDiv = document.createElement('div');
+          // Generate QR at full resolution for quality
+          const qrSize = fullSize;
+
+          new QRCode(tempDiv, {
             text: text,
-            width: size,
-            height: size,
+            width: qrSize,
+            height: qrSize,
             colorDark: '#000000',
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.M
           });
-          container.classList.add('visible');
-          copyBtn.disabled = false;
-          downloadBtn.disabled = false;
+
+          setTimeout(() => {
+            const qrCanvas = tempDiv.querySelector('canvas');
+            if (!qrCanvas) {
+              status.textContent = 'error: failed to generate qr code';
+              status.className = 'status error';
+              return;
+            }
+
+            fullCanvas = document.createElement('canvas');
+            fullCanvas.width = fullSize;
+            fullCanvas.height = fullSize;
+            const ctx = fullCanvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, fullSize, fullSize);
+
+            // Equal margin on all 4 sides - title goes inside bottom margin
+            const margin = Math.round(fullSize * 0.08);
+            const qrDisplaySize = fullSize - (margin * 2);
+
+            // QR centered with equal margins
+            const qrX = margin;
+            const qrY = margin;
+
+            ctx.drawImage(qrCanvas, qrX, qrY, qrDisplaySize, qrDisplaySize);
+
+            // Title centered in the bottom margin area
+            if (title) {
+              const fontSize = Math.round(margin * 0.75);
+              ctx.fillStyle = '#000000';
+              ctx.font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              const titleY = fullSize - (margin / 2);
+              ctx.fillText(title, fullSize / 2, titleY);
+            }
+
+            canvas.width = previewSize;
+            canvas.height = previewSize;
+            const previewCtx = canvas.getContext('2d');
+            previewCtx.drawImage(fullCanvas, 0, 0, previewSize, previewSize);
+
+            sizeInfo.textContent = `${inches}×${inches}" at ${DPI} DPI (${fullSize}×${fullSize}px)`;
+
+            container.classList.add('visible');
+            copyBtn.disabled = false;
+            downloadBtn.disabled = false;
+          }, 50);
+
         } catch (err) {
           status.textContent = 'error: ' + err.message;
           status.className = 'status error';
           container.classList.remove('visible');
           copyBtn.disabled = true;
           downloadBtn.disabled = true;
+          fullCanvas = null;
         }
       }
 
       async function copyQR() {
-        try {
-          const canvas = output.querySelector('canvas');
-          const img = output.querySelector('img');
-          const source = canvas || img;
+        if (!fullCanvas) return;
 
-          if (canvas) {
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-          } else if (img) {
-            const response = await fetch(img.src);
-            const blob = await response.blob();
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-          }
+        try {
+          const blob = await new Promise(resolve => fullCanvas.toBlob(resolve, 'image/png'));
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
           status.textContent = 'copied to clipboard';
           status.className = 'status success';
         } catch (err) {
@@ -226,33 +309,34 @@
       }
 
       function downloadQR() {
-        const canvas = output.querySelector('canvas');
-        const img = output.querySelector('img');
-        const link = document.createElement('a');
-        link.download = 'qr.png';
+        if (!fullCanvas) return;
 
-        if (canvas) {
-          link.href = canvas.toDataURL('image/png');
-        } else if (img) {
-          link.href = img.src;
-        }
+        const title = titleInput.value.trim();
+        const inches = sizeSelect.value;
+        const filename = title
+          ? `qr-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${inches}in.png`
+          : `qr-${inches}in.png`;
+
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = fullCanvas.toDataURL('image/png');
         link.click();
+
         status.textContent = 'downloaded';
         status.className = 'status success';
       }
 
       function clearAll() {
         input.value = '';
+        titleInput.value = '';
         container.classList.remove('visible');
         copyBtn.disabled = true;
         downloadBtn.disabled = true;
         status.textContent = '';
         status.className = 'status';
-        if (qr) {
-          qr.clear();
-          qr = null;
-          output.innerHTML = '';
-        }
+        fullCanvas = null;
+        canvas.width = 0;
+        canvas.height = 0;
       }
     </script>
   </body>
